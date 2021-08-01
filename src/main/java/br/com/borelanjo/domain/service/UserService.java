@@ -5,5 +5,5 @@ import br.com.borelanjo.presentation.dto.UserTo;
 
 public interface UserService {
 
-    String register(UserTo userTo);
+    void register(UserTo userTo);
 }

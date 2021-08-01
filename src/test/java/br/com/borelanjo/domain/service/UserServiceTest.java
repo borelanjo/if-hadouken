@@ -1,17 +1,19 @@
 package br.com.borelanjo.domain.service;
 
 import br.com.borelanjo.application.service.UserServiceImpl;
+import br.com.borelanjo.application.service.exception.UserAlreadyExistsException;
 import br.com.borelanjo.domain.model.User;
 import br.com.borelanjo.infrastructure.repository.UserArrayRepository;
 import br.com.borelanjo.infrastructure.repository.UserRepository;
+import br.com.borelanjo.infrastructure.validator.exception.FieldInvalidException;
 import br.com.borelanjo.presentation.dto.UserTo;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class UserServiceTest {
     private final UserService userService;
@@ -36,11 +38,10 @@ class UserServiceTest {
                 .password("blahblah12345")
                 .passwordRepeat("blahblah12345")
                 .build();
-        var result = userService.register(userTo);
+        userService.register(userTo);
 
         User validUser = userRepository.findByUserName("validUser");
-        assertNotNull(result);
-        assertEquals("Created", result);
+
         assertEquals(userTo.getUsername(), validUser.getUsername());
         assertEquals(userTo.getPassword(), validUser.getPassword());
         assertEquals(userTo.getEmail(), validUser.getEmail());
@@ -54,8 +55,11 @@ class UserServiceTest {
                 .email("blahblah@gmail.com")
                 .password("blahblah12345")
                 .build();
-        var result = userService.register(userTo);
-        assertEquals("Empty Username", result);
+        FieldInvalidException thrown = Assertions.assertThrows(FieldInvalidException.class, () ->
+                userService.register(userTo));
+
+        assertEquals("'username' não pode ser vazio.", thrown.getMessage());
+
     }
 
     @Test
@@ -65,8 +69,11 @@ class UserServiceTest {
                 .email("blahblah@gmail.com")
                 .password("blahblah12345")
                 .build();
-        var result = userService.register(userTo);
-        assertEquals("Empty Username", result);
+
+        FieldInvalidException thrown = Assertions.assertThrows(FieldInvalidException.class, () ->
+                userService.register(userTo));
+
+        assertEquals("'username' não pode ser vazio.", thrown.getMessage());
     }
 
     @Test
@@ -77,8 +84,11 @@ class UserServiceTest {
                 .email("blahblah@gmail.com")
                 .password("")
                 .build();
-        var result = userService.register(userTo);
-        assertEquals("Empty Password", result);
+
+        FieldInvalidException thrown = Assertions.assertThrows(FieldInvalidException.class, () ->
+                userService.register(userTo));
+
+        assertEquals("'senha' não pode ser vazio.", thrown.getMessage());
     }
 
     @Test
@@ -88,8 +98,11 @@ class UserServiceTest {
                 .username("blahblah")
                 .email("blahblah@gmail.com")
                 .build();
-        var result = userService.register(userTo);
-        assertEquals("Empty Password", result);
+
+        FieldInvalidException thrown = Assertions.assertThrows(FieldInvalidException.class, () ->
+                userService.register(userTo));
+
+        assertEquals("'senha' não pode ser vazio.", thrown.getMessage());
     }
 
     @Test
@@ -101,21 +114,26 @@ class UserServiceTest {
                 .password("blahblah12345")
                 .passwordRepeat("blahblah1234")
                 .build();
-        var result = userService.register(userTo);
-        assertEquals("Passwords do not match", result);
+
+        FieldInvalidException thrown = Assertions.assertThrows(FieldInvalidException.class, () -> userService.register(userTo));
+
+        assertEquals("As senhas precisam ser iguais.", thrown.getMessage());
     }
 
     @Test
     void shouldNotRegisterUserWhenUsernameIsShort() {
         UserTo userTo = UserTo
                 .builder()
-                .username("bl")
+                .username("b")
                 .email("blahblah@gmail.com")
                 .password("blahblah12345")
                 .passwordRepeat("blahblah12345")
                 .build();
-        var result = userService.register(userTo);
-        assertEquals("Username must be between 2 and 64 characters", result);
+
+        FieldInvalidException thrown = Assertions.assertThrows(FieldInvalidException.class, () ->
+                userService.register(userTo));
+
+        assertEquals("'username' deve ser maior que 2 e menor que 64, mas tem 1.", thrown.getMessage());
     }
 
     @Test
@@ -127,8 +145,43 @@ class UserServiceTest {
                 .password("blahblah12345")
                 .passwordRepeat("blahblah12345")
                 .build();
-        var result = userService.register(userTo);
-        assertEquals("Username must be between 2 and 64 characters", result);
+
+        FieldInvalidException thrown = Assertions.assertThrows(FieldInvalidException.class, () ->
+                userService.register(userTo));
+
+        assertEquals("'username' deve ser maior que 2 e menor que 64, mas tem 91.", thrown.getMessage());
+    }
+
+    @Test
+    void shouldNotRegisterUserWhenPasswordIsLarge() {
+        UserTo userTo = UserTo
+                .builder()
+                .username("blahblah")
+                .email("blahblah@gmail.com")
+                .password("blahblah12345111111111111111111111111111111111111111111111111111111111111111111111111111")
+                .passwordRepeat("blahblah12345")
+                .build();
+
+        FieldInvalidException thrown = Assertions.assertThrows(FieldInvalidException.class, () ->
+                userService.register(userTo));
+
+        assertEquals("'senha' deve ser maior que 6 e menor que 30, mas tem 88.", thrown.getMessage());
+    }
+
+    @Test
+    void shouldNotRegisterUserWhenPasswordIsShort() {
+        UserTo userTo = UserTo
+                .builder()
+                .username("blahblah")
+                .email("blahblah@gmail.com")
+                .password("blahb")
+                .passwordRepeat("blahblah12345")
+                .build();
+
+        FieldInvalidException thrown = Assertions.assertThrows(FieldInvalidException.class, () ->
+                userService.register(userTo));
+
+        assertEquals("'senha' deve ser maior que 6 e menor que 30, mas tem 5.", thrown.getMessage());
     }
 
     @Test
@@ -140,8 +193,12 @@ class UserServiceTest {
                 .password("blahblah12345")
                 .passwordRepeat("blahblah12345")
                 .build();
-        var result = userService.register(userTo);
-        assertEquals("Username Valid characters: a-z, A-Z, 0-9, points, dashes and underscores", result);
+
+        FieldInvalidException thrown = Assertions.assertThrows(FieldInvalidException.class, () ->
+                userService.register(userTo));
+
+        assertEquals("'username' precisa seguir essa regra: 'a-z', 'A-Z', '0-9', '.', '-' e '_'.",
+                thrown.getMessage());
     }
 
     @Test
@@ -153,8 +210,10 @@ class UserServiceTest {
                 .password("blahblah12345")
                 .passwordRepeat("blahblah12345")
                 .build();
-        var result = userService.register(userTo);
-        assertEquals("Username already exists", result);
+
+        Assertions.assertThrows(UserAlreadyExistsException.class, () ->
+                userService.register(userTo)
+        );
     }
 
     @Test
@@ -166,8 +225,11 @@ class UserServiceTest {
                 .password("blahblah12345")
                 .passwordRepeat("blahblah12345")
                 .build();
-        var result = userService.register(userTo);
-        assertEquals("Email cannot be empty", result);
+
+        FieldInvalidException thrown = Assertions.assertThrows(FieldInvalidException.class, () ->
+                userService.register(userTo));
+
+        assertEquals("'e-mail' não pode ser vazio.", thrown.getMessage());
     }
 
     @Test
@@ -179,8 +241,11 @@ class UserServiceTest {
                 .password("blahblah12345")
                 .passwordRepeat("blahblah12345")
                 .build();
-        var result = userService.register(userTo);
-        assertEquals("Email must be less than 64 characters", result);
+
+        FieldInvalidException thrown = Assertions.assertThrows(FieldInvalidException.class, () ->
+                userService.register(userTo));
+
+        assertEquals("'e-mail' deve ser maior que 0 e menor que 64, mas tem 91.", thrown.getMessage());
     }
 
     @Test
@@ -192,7 +257,10 @@ class UserServiceTest {
                 .password("blahblah12345")
                 .passwordRepeat("blahblah12345")
                 .build();
-        var result = userService.register(userTo);
-        assertEquals("You must provide a valid email address", result);
+
+        FieldInvalidException thrown = Assertions.assertThrows(FieldInvalidException.class, () ->
+                userService.register(userTo));
+
+        assertEquals("Você precisa fornecer um e-mail valido.", thrown.getMessage());
     }
 }
