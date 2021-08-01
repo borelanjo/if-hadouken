@@ -1,9 +1,12 @@
 package br.com.borelanjo.application.service;
 
+import br.com.borelanjo.application.service.exception.UserAlreadyExistsException;
 import br.com.borelanjo.domain.model.User;
 import br.com.borelanjo.domain.service.UserService;
 import br.com.borelanjo.infrastructure.repository.UserRepository;
-import br.com.borelanjo.infrastructure.validator.EmailValidator;
+import br.com.borelanjo.infrastructure.validator.Validator;
+import br.com.borelanjo.infrastructure.validator.exception.FieldInvalidException;
+import br.com.borelanjo.infrastructure.validator.rule.*;
 import br.com.borelanjo.presentation.dto.UserTo;
 
 public class UserServiceImpl implements UserService {
@@ -15,34 +18,35 @@ public class UserServiceImpl implements UserService {
 
 
     @Override
-    public String register(UserTo userTo) {
-        String message = null;
-        if (userTo != null) {
-            String msg = "";
-            if (userTo.getUsername() != null && !userTo.getUsername().isBlank()) {
-                if (userTo.getPassword() != null && !userTo.getPassword().isBlank()) {
-                    if (userTo.getPassword().equals(userTo.getPasswordRepeat())) {
-                        if (userTo.getPassword().length() > 5) {
-                            if (userTo.getUsername().length() < 65 && userTo.getUsername().length() > 3) {
-                                if (userTo.getUsername().matches("^[a-zA-Z0-9._-]{3,}$")) {
-                                    final User user = userRepository.findByUserName(userTo.getUsername());
-                                    if (user == null) {
-                                        if (userTo.getEmail() != null && !userTo.getEmail().isEmpty()) {
-                                            if (userTo.getEmail().length() < 65) {
-                                                if (EmailValidator.isValid(userTo.getEmail())) {
-                                                    userRepository.create(userTo.toUser());
-                                                } else msg = "You must provide a valid email address";
-                                            } else msg = "Email must be less than 64 characters";
-                                        } else msg = "Email cannot be empty";
-                                    } else msg = "Username already exists";
-                                } else msg = "Username Valid characters: a-z, A-Z, 0-9, points, dashes and underscores";
-                            } else msg = "Username must be between 2 and 64 characters";
-                        } else msg = "Password must be at least 6 characters";
-                    } else msg = "Passwords do not match";
-                } else msg = "Empty Password";
-            } else msg = "Empty Username";
-            message = msg.isBlank() ? "Created" : msg;
+    public void register(UserTo userTo) {
+
+        validate(userTo);
+
+        userRepository.create(userTo.toUser());
+    }
+
+    public void validate(UserTo userTo) {
+        final Validator validator = new Validator();
+
+        if (userTo == null) {
+            throw new FieldInvalidException("Usuário não pode ser nulo");
         }
-        return message;
+
+        validator
+                .addRule(new EmptyFieldRule("username", userTo.getUsername()))
+                .addRule(new EmptyFieldRule("senha", userTo.getPassword()))
+                .addRule(new EmptyFieldRule("e-mail", userTo.getEmail()))
+                .addRule(new SizeFieldRule("username", userTo.getUsername(), 2, 64))
+                .addRule(new SizeFieldRule("senha", userTo.getPassword(), 6, 30))
+                .addRule(new SizeFieldRule("e-mail", userTo.getEmail(), 0, 64))
+                .addRule(new UsernameRule(userTo.getUsername()))
+                .addRule(new EmailRule(userTo.getEmail()))
+                .addRule(new PasswordRule(userTo))
+                .process();
+
+        final User user = userRepository.findByUserName(userTo.getUsername());
+        if (user != null) {
+            throw new UserAlreadyExistsException();
+        }
     }
 }
